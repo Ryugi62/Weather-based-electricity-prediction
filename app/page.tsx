@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Zap, Cloud, Thermometer, Wind, Droplets, Calendar, Copy, Plus, Minus } from "lucide-react"
+import { Loader2, Zap, Cloud, Thermometer, Wind, Droplets, Calendar, Copy, Plus, Minus, Crown } from "lucide-react"
 import {
   Line,
   XAxis,
@@ -35,6 +35,18 @@ const chartConfig = {
   efficiency: { label: "효율성", color: "hsl(var(--chart-3))" },
 }
 
+const REGIONS = {
+  서울: { lat: 37.5665, lon: 126.9780 },
+  경기: { lat: 37.436, lon: 127.55 },
+  인천: { lat: 37.4563, lon: 126.7052 },
+  강원: { lat: 37.8228, lon: 128.1555 },
+  충청: { lat: 36.5184, lon: 127.119 },
+  전라: { lat: 35.7175, lon: 127.153 },
+  경상: { lat: 36.4919, lon: 128.8889 },
+  제주: { lat: 33.489, lon: 126.4983 },
+} as const
+
+type RegionKey = keyof typeof REGIONS
 
 export default function EnergyPredictionDashboard() {
   const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
@@ -44,8 +56,7 @@ export default function EnergyPredictionDashboard() {
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
   const [bulkValue, setBulkValue] = useState("")
-  const [latitude, setLatitude] = useState(37.5665)
-  const [longitude, setLongitude] = useState(126.9780)
+  const [region, setRegion] = useState<RegionKey>('서울')
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
@@ -99,7 +110,8 @@ export default function EnergyPredictionDashboard() {
     setLoading(true)
 
     try {
-      const results = await fetchPredictions(dailyInputs, latitude, longitude)
+      const { lat, lon } = REGIONS[region]
+      const results = await fetchPredictions(dailyInputs, lat, lon)
       setPredictions(results)
       setWeatherData(results.map((r) => r.weather))
     } catch (error) {
@@ -114,6 +126,11 @@ export default function EnergyPredictionDashboard() {
   const totalPredicted = predictions.reduce((sum, p) => sum + p.predictedConsumption, 0)
   const averageEfficiency = predictions.length ? Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / predictions.length) : 0
   const diff = predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
+  const bestDay = predictions.reduce<PredictionResult | null>((best, p) => {
+    if (!best) return p
+    return p.efficiency > best.efficiency ? p : best
+  }, null)
+  const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1
 
 
 
@@ -141,25 +158,20 @@ export default function EnergyPredictionDashboard() {
             <CardDescription>빠르고 쉬운 입력을 위한 다양한 방법을 제공합니다</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <Label htmlFor="lat">위도</Label>
-                <Input
-                  id="lat"
-                  type="number"
-                  value={latitude}
-                  onChange={(e) => setLatitude(parseFloat(e.target.value))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="lon">경도</Label>
-                <Input
-                  id="lon"
-                  type="number"
-                  value={longitude}
-                  onChange={(e) => setLongitude(parseFloat(e.target.value))}
-                />
-              </div>
+            <div className="mb-4">
+              <Label htmlFor="region">지역 선택</Label>
+              <select
+                id="region"
+                value={region}
+                onChange={(e) => setRegion(e.target.value as RegionKey)}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {Object.keys(REGIONS).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
             </div>
             <Tabs defaultValue="quick" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
@@ -453,9 +465,15 @@ export default function EnergyPredictionDashboard() {
                   </thead>
                   <tbody>
                     {predictions.map((prediction, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50">
+                      <tr
+                        key={index}
+                        className={`border-b hover:bg-gray-50 ${index === bestIndex ? 'bg-yellow-50' : ''}`}
+                      >
                         <td className="p-3 text-sm">{new Date(prediction.date).toLocaleDateString("ko-KR")}</td>
-                        <td className="p-3 font-medium">{prediction.day}</td>
+                        <td className="p-3 font-medium flex items-center gap-1">
+                          {prediction.day}
+                          {index === bestIndex && <Crown className="h-4 w-4 text-orange-500" />}
+                        </td>
                         <td className="p-3 text-blue-600 font-semibold">
                           {prediction.targetGeneration.toLocaleString()} kWh
                         </td>
@@ -491,7 +509,7 @@ export default function EnergyPredictionDashboard() {
 
         {/* 요약 통계 */}
         {predictions.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <SummaryCard
               title="총 목표 생산량"
               value={<div className="text-2xl font-bold text-blue-600">{totalTarget.toLocaleString()} kWh</div>}
@@ -516,6 +534,13 @@ export default function EnergyPredictionDashboard() {
               }
               subtitle={diff >= 0 ? '잉여 전력' : '부족 전력'}
             />
+            {bestDay && (
+              <SummaryCard
+                title="최고 효율일"
+                value={<div className="text-2xl font-bold text-orange-600">{bestDay.day}</div>}
+                subtitle={`${bestDay.efficiency}% 효율`}
+              />
+            )}
           </div>
         )}
       </div>
