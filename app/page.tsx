@@ -48,7 +48,6 @@ const REGIONS = {
 
 type RegionKey = keyof typeof REGIONS
 
-
 export default function EnergyPredictionDashboard() {
   const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
 
