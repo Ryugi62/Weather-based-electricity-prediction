@@ -44,6 +44,7 @@ export default function EnergyPredictionDashboard() {
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
+  const [bulkValue, setBulkValue] = useState("")
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
