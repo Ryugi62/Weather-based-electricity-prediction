@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const w = weather[idx];
     const predicted = Math.round(predictions[idx]);
     const target = Number(input.targetProduction);
-    const efficiency = Math.round((predicted / target) * 100);
+    const efficiency = Number((predicted / Math.max(target, 1)).toFixed(2));
 
     return {
       date: input.date,

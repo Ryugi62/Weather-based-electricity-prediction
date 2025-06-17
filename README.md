@@ -9,7 +9,9 @@
 
 This project estimates the electricity usage required to manufacture a target
 number of products over the next seven days. Weather data is used to adjust the
-predictions for the selected region.
+predictions for the selected region. Efficiency is expressed as the predicted
+energy consumption per product (kWh per unit), where lower values indicate
+better performance.
 
 This repository will stay in sync with your deployed chats on
 [v0.dev](https://v0.dev). Any changes you make to your deployed app will be

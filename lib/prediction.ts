@@ -19,6 +19,7 @@ export interface PredictionResult {
   targetProduction: number;
   predictedConsumption: number;
   weather: WeatherData;
+  /** 제품 한 개당 예상 전력 사용량 (kWh) */
   efficiency: number;
 }
 
@@ -97,7 +98,9 @@ export function predictEnergyConsumption(
       consumption * multiplier * (0.9 + Math.random() * 0.2)
     );
 
-    const efficiency = Math.round((generation / predictedConsumption) * 100);
+    const efficiency = Number(
+      (predictedConsumption / Math.max(generation, 1)).toFixed(2)
+    );
 
     return {
       date: input.date,

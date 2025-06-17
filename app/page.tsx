@@ -54,7 +54,7 @@ import { SummaryCard } from "@/components/SummaryCard";
 const chartConfig = {
   targetProduction: { label: "목표 생산량", color: "hsl(var(--chart-1))" },
   predictedConsumption: { label: "예측 사용량", color: "hsl(var(--chart-2))" },
-  efficiency: { label: "효율성", color: "hsl(var(--chart-3))" },
+  efficiency: { label: "제품당 사용량(kWh)", color: "hsl(var(--chart-3))" },
 };
 
 const REGIONS = {
@@ -159,9 +159,11 @@ export default function EnergyPredictionDashboard() {
     0
   );
   const averageEfficiency = predictions.length
-    ? Math.round(
-        predictions.reduce((sum, p) => sum + p.efficiency, 0) /
+    ? Number(
+        (
+          predictions.reduce((sum, p) => sum + p.efficiency, 0) /
           predictions.length
+        ).toFixed(2)
       )
     : 0;
   const diff = predictions.reduce(
@@ -170,7 +172,7 @@ export default function EnergyPredictionDashboard() {
   );
   const bestDay = predictions.reduce<PredictionResult | null>((best, p) => {
     if (!best) return p;
-    return p.efficiency > best.efficiency ? p : best;
+    return p.efficiency < best.efficiency ? p : best;
   }, null);
   const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1;
 
@@ -491,8 +493,10 @@ export default function EnergyPredictionDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>일별 효율성</CardTitle>
-                <CardDescription>생산량 대비 사용량 효율성 (%)</CardDescription>
+                <CardTitle>일별 제품당 사용량</CardTitle>
+                <CardDescription>
+                  낮을수록 효율이 좋은 값 (kWh/개)
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px]">
@@ -505,7 +509,7 @@ export default function EnergyPredictionDashboard() {
                       <Bar
                         dataKey="efficiency"
                         fill="var(--color-efficiency)"
-                        name="효율성 %"
+                        name="제품당 사용량"
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -531,7 +535,7 @@ export default function EnergyPredictionDashboard() {
                       <th className="text-left p-3">일차</th>
                       <th className="text-left p-3">목표 생산량</th>
                       <th className="text-left p-3">예측 사용량</th>
-                      <th className="text-left p-3">효율성</th>
+                      <th className="text-left p-3">제품당 사용량</th>
                       <th className="text-left p-3">온도</th>
                       <th className="text-left p-3">습도</th>
                       <th className="text-left p-3">풍속</th>
@@ -559,16 +563,8 @@ export default function EnergyPredictionDashboard() {
                           {prediction.predictedConsumption.toLocaleString()} kWh
                         </td>
                         <td className="p-3">
-                          <span
-                            className={`font-bold flex items-center gap-1 ${
-                              prediction.efficiency >= 100
-                                ? "text-green-600"
-                                : prediction.efficiency >= 90
-                                ? "text-yellow-600"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {prediction.efficiency}%
+                          <span className="font-bold flex items-center gap-1">
+                            {prediction.efficiency.toFixed(2)} kWh/개
                             {index === bestIndex && (
                               <Crown className="h-4 w-4 text-orange-500" />
                             )}
@@ -615,10 +611,10 @@ export default function EnergyPredictionDashboard() {
               subtitle="7일 총합"
             />
             <SummaryCard
-              title="평균 효율성"
+              title="평균 제품당 사용량"
               value={
                 <div className="text-2xl font-bold text-purple-600">
-                  {averageEfficiency}%
+                  {averageEfficiency.toFixed(2)} kWh/개
                 </div>
               }
               subtitle="7일 평균"
@@ -645,7 +641,7 @@ export default function EnergyPredictionDashboard() {
                     {bestDay.day}
                   </div>
                 }
-                subtitle={`${bestDay.efficiency}% 효율`}
+                subtitle={`${bestDay.efficiency.toFixed(2)} kWh/개`}
               />
             )}
           </div>
