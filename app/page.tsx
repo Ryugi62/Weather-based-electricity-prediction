@@ -30,24 +30,10 @@ import {
   generateWeatherData,
   predictEnergyConsumption,
 } from "@/lib/prediction"
+import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
 
 export default function EnergyPredictionDashboard() {
-  const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(() => {
-    const inputs = []
-    const today = new Date()
-
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
-
-      inputs.push({
-        date: date.toISOString().split("T")[0],
-        day: `+${i}일차`,
-        targetGeneration: "",
-      })
-    }
-    return inputs
-  })
+  const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
 
   const [bulkValue, setBulkValue] = useState("")
   const [loading, setLoading] = useState(false)
@@ -56,62 +42,47 @@ export default function EnergyPredictionDashboard() {
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
-    const newInputs = [...dailyInputs]
-    newInputs[index].targetGeneration = value
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) =>
+        idx === index ? { ...item, targetGeneration: value } : item,
+      ),
+    )
   }
 
   // 일괄 적용
   const applyBulkValue = () => {
     if (!bulkValue) return
-    const newInputs = dailyInputs.map((input) => ({
-      ...input,
-      targetGeneration: bulkValue,
-    }))
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((input) => ({ ...input, targetGeneration: bulkValue })),
+    )
   }
 
   // 패턴 적용
   const applyPattern = (pattern: "weekday-weekend" | "increasing" | "decreasing") => {
-    const newInputs = [...dailyInputs]
-    const baseValue = 1000
-
-    newInputs.forEach((input, index) => {
-      const date = new Date(input.date)
-      const dayOfWeek = date.getDay()
-
-      switch (pattern) {
-        case "weekday-weekend":
-          // 평일 1200, 주말 800
-          input.targetGeneration = dayOfWeek === 0 || dayOfWeek === 6 ? "800" : "1200"
-          break
-        case "increasing":
-          // 점진적 증가
-          input.targetGeneration = (baseValue + index * 100).toString()
-          break
-        case "decreasing":
-          // 점진적 감소
-          input.targetGeneration = (baseValue + 600 - index * 100).toString()
-          break
-      }
-    })
-    setDailyInputs(newInputs)
+    setDailyInputs(applyInputPattern(dailyInputs, pattern))
   }
 
   // 값 복사
   const copyValue = (fromIndex: number, toIndex: number) => {
-    const newInputs = [...dailyInputs]
-    newInputs[toIndex].targetGeneration = newInputs[fromIndex].targetGeneration
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) =>
+        idx === toIndex
+          ? { ...item, targetGeneration: inputs[fromIndex].targetGeneration }
+          : item,
+      ),
+    )
   }
 
   // 값 조정 (+ / -)
   const adjustValue = (index: number, delta: number) => {
-    const newInputs = [...dailyInputs]
-    const currentValue = Number(newInputs[index].targetGeneration) || 0
-    const newValue = Math.max(0, currentValue + delta)
-    newInputs[index].targetGeneration = newValue.toString()
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) => {
+        if (idx !== index) return item
+        const currentValue = Number(item.targetGeneration) || 0
+        const newValue = Math.max(0, currentValue + delta)
+        return { ...item, targetGeneration: newValue.toString() }
+      }),
+    )
   }
 
   const handlePredict = async () => {
