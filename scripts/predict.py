@@ -1,8 +1,10 @@
 import sys
 import json
 import joblib
+from pathlib import Path
 
-MODEL = joblib.load("models/linear_model.pkl")
+ROOT = Path(__file__).resolve().parent.parent
+MODEL = joblib.load(ROOT / "models" / "linear_model.pkl")
 
 
 def main():
