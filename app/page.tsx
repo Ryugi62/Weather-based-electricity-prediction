@@ -1,16 +1,34 @@
-"use client"
+"use client";
 
 /**
  * 전력 예측 대시보드 메인 페이지
  * 다양한 입력 방법을 제공하고 예측 결과를 시각화합니다.
  */
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Loader2, Zap, Cloud, Thermometer, Wind, Droplets, Calendar, Copy, Plus, Minus, Crown } from "lucide-react"
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Loader2,
+  Zap,
+  Cloud,
+  Thermometer,
+  Wind,
+  Droplets,
+  Calendar,
+  Copy,
+  Plus,
+  Minus,
+  Crown,
+} from "lucide-react";
 import {
   Line,
   XAxis,
@@ -20,23 +38,27 @@ import {
   BarChart,
   Bar,
   ComposedChart,
-} from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { type DailyInput, type PredictionResult } from "@/lib/prediction"
-import { type WeatherData } from "@/lib/weather"
-import { fetchPredictions } from "@/lib/api"
-import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
-import { WeatherCard } from "@/components/WeatherCard"
-import { SummaryCard } from "@/components/SummaryCard"
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { type DailyInput, type PredictionResult } from "@/lib/prediction";
+import { type WeatherData } from "@/lib/weather";
+import { fetchPredictions } from "@/lib/api";
+import { createInitialInputs, applyInputPattern } from "@/lib/input-utils";
+import { WeatherCard } from "@/components/WeatherCard";
+import { SummaryCard } from "@/components/SummaryCard";
 const chartConfig = {
   targetGeneration: { label: "목표 생산량", color: "hsl(var(--chart-1))" },
   predictedConsumption: { label: "예측 사용량", color: "hsl(var(--chart-2))" },
   efficiency: { label: "효율성", color: "hsl(var(--chart-3))" },
-}
+};
 
 const REGIONS = {
-  서울: { lat: 37.5665, lon: 126.9780 },
+  서울: { lat: 37.5665, lon: 126.978 },
   경기: { lat: 37.436, lon: 127.55 },
   인천: { lat: 37.4563, lon: 126.7052 },
   강원: { lat: 37.8228, lon: 128.1555 },
@@ -44,41 +66,43 @@ const REGIONS = {
   전라: { lat: 35.7175, lon: 127.153 },
   경상: { lat: 36.4919, lon: 128.8889 },
   제주: { lat: 33.489, lon: 126.4983 },
-} as const
+} as const;
 
-type RegionKey = keyof typeof REGIONS
+type RegionKey = keyof typeof REGIONS;
 
 export default function EnergyPredictionDashboard() {
-  const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
+  const [dailyInputs, setDailyInputs] =
+    useState<DailyInput[]>(createInitialInputs);
 
-
-  const [loading, setLoading] = useState(false)
-  const [predictions, setPredictions] = useState<PredictionResult[]>([])
-  const [weatherData, setWeatherData] = useState<WeatherData[]>([])
-  const [bulkValue, setBulkValue] = useState("")
-  const [region, setRegion] = useState<RegionKey>('서울')
+  const [loading, setLoading] = useState(false);
+  const [predictions, setPredictions] = useState<PredictionResult[]>([]);
+  const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
+  const [bulkValue, setBulkValue] = useState("");
+  const [region, setRegion] = useState<RegionKey>("서울");
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
     setDailyInputs((inputs) =>
       inputs.map((item, idx) =>
-        idx === index ? { ...item, targetGeneration: value } : item,
-      ),
-    )
-  }
+        idx === index ? { ...item, targetGeneration: value } : item
+      )
+    );
+  };
 
   // 일괄 적용
   const applyBulkValue = () => {
-    if (!bulkValue) return
+    if (!bulkValue) return;
     setDailyInputs((inputs) =>
-      inputs.map((input) => ({ ...input, targetGeneration: bulkValue })),
-    )
-  }
+      inputs.map((input) => ({ ...input, targetGeneration: bulkValue }))
+    );
+  };
 
   // 패턴 적용
-  const applyPattern = (pattern: "weekday-weekend" | "increasing" | "decreasing") => {
-    setDailyInputs(applyInputPattern(dailyInputs, pattern))
-  }
+  const applyPattern = (
+    pattern: "weekday-weekend" | "increasing" | "decreasing"
+  ) => {
+    setDailyInputs(applyInputPattern(dailyInputs, pattern));
+  };
 
   // 값 복사
   const copyValue = (fromIndex: number, toIndex: number) => {
@@ -86,53 +110,69 @@ export default function EnergyPredictionDashboard() {
       inputs.map((item, idx) =>
         idx === toIndex
           ? { ...item, targetGeneration: inputs[fromIndex].targetGeneration }
-          : item,
-      ),
-    )
-  }
+          : item
+      )
+    );
+  };
 
   // 값 조정 (+ / -)
   const adjustValue = (index: number, delta: number) => {
     setDailyInputs((inputs) =>
       inputs.map((item, idx) => {
-        if (idx !== index) return item
-        const currentValue = Number(item.targetGeneration) || 0
-        const newValue = Math.max(0, currentValue + delta)
-        return { ...item, targetGeneration: newValue.toString() }
-      }),
-    )
-  }
+        if (idx !== index) return item;
+        const currentValue = Number(item.targetGeneration) || 0;
+        const newValue = Math.max(0, currentValue + delta);
+        return { ...item, targetGeneration: newValue.toString() };
+      })
+    );
+  };
 
   const handlePredict = async () => {
-    const hasAllInputs = dailyInputs.every((input) => input.targetGeneration.trim() !== "")
-    if (!hasAllInputs) return
+    const hasAllInputs = dailyInputs.every(
+      (input) => input.targetGeneration.trim() !== ""
+    );
+    if (!hasAllInputs) return;
 
-    setLoading(true)
+    setLoading(true);
 
     try {
-      const { lat, lon } = REGIONS[region]
-      const results = await fetchPredictions(dailyInputs, lat, lon)
-      setPredictions(results)
-      setWeatherData(results.map((r) => r.weather))
+      const { lat, lon } = REGIONS[region];
+      const results = await fetchPredictions(dailyInputs, lat, lon);
+      setPredictions(results);
+      setWeatherData(results.map((r) => r.weather));
     } catch (error) {
-      console.error('Failed to fetch predictions', error)
+      console.error("Failed to fetch predictions", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const isFormValid = dailyInputs.every((input) => input.targetGeneration.trim() !== "")
-  const totalTarget = predictions.reduce((sum, p) => sum + p.targetGeneration, 0)
-  const totalPredicted = predictions.reduce((sum, p) => sum + p.predictedConsumption, 0)
-  const averageEfficiency = predictions.length ? Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / predictions.length) : 0
-  const diff = predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
+  const isFormValid = dailyInputs.every(
+    (input) => input.targetGeneration.trim() !== ""
+  );
+  const totalTarget = predictions.reduce(
+    (sum, p) => sum + p.targetGeneration,
+    0
+  );
+  const totalPredicted = predictions.reduce(
+    (sum, p) => sum + p.predictedConsumption,
+    0
+  );
+  const averageEfficiency = predictions.length
+    ? Math.round(
+        predictions.reduce((sum, p) => sum + p.efficiency, 0) /
+          predictions.length
+      )
+    : 0;
+  const diff = predictions.reduce(
+    (sum, p) => sum + (p.targetGeneration - p.predictedConsumption),
+    0
+  );
   const bestDay = predictions.reduce<PredictionResult | null>((best, p) => {
-    if (!best) return p
-    return p.efficiency > best.efficiency ? p : best
-  }, null)
-  const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1
-
-
+    if (!best) return p;
+    return p.efficiency > best.efficiency ? p : best;
+  }, null);
+  const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -144,7 +184,8 @@ export default function EnergyPredictionDashboard() {
             7일간 전력 사용량 예측 시스템
           </h1>
           <p className="text-gray-600">
-            각 날짜별 목표 전력 생산량과 기상 데이터를 기반으로 내일부터 7일간 전력 사용량을 예측합니다
+            각 날짜별 목표 전력 생산량과 기상 데이터를 기반으로 내일부터 7일간
+            전력 사용량을 예측합니다
           </p>
         </div>
 
@@ -155,7 +196,9 @@ export default function EnergyPredictionDashboard() {
               <Calendar className="h-5 w-5" />
               7일간 목표 전력 생산량 입력
             </CardTitle>
-            <CardDescription>빠르고 쉬운 입력을 위한 다양한 방법을 제공합니다</CardDescription>
+            <CardDescription>
+              빠르고 쉬운 입력을 위한 다양한 방법을 제공합니다
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -184,7 +227,9 @@ export default function EnergyPredictionDashboard() {
               <TabsContent value="quick" className="space-y-4">
                 <div className="flex gap-4 items-end">
                   <div className="flex-1">
-                    <Label htmlFor="bulk-input">모든 날짜에 동일한 값 적용</Label>
+                    <Label htmlFor="bulk-input">
+                      모든 날짜에 동일한 값 적용
+                    </Label>
                     <Input
                       id="bulk-input"
                       type="number"
@@ -205,7 +250,9 @@ export default function EnergyPredictionDashboard() {
                     className="h-auto p-4 flex flex-col items-start"
                   >
                     <div className="font-medium">평일/주말 패턴</div>
-                    <div className="text-sm text-gray-500">평일 1200kWh, 주말 800kWh</div>
+                    <div className="text-sm text-gray-500">
+                      평일 1200kWh, 주말 800kWh
+                    </div>
                   </Button>
 
                   <Button
@@ -238,14 +285,17 @@ export default function EnergyPredictionDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const pattern = [1200, 1100, 1300, 1000, 1400, 900, 800]
-                          const newInputs = [...dailyInputs]
+                          const pattern = [
+                            1200, 1100, 1300, 1000, 1400, 900, 800,
+                          ];
+                          const newInputs = [...dailyInputs];
                           pattern.forEach((value, index) => {
                             if (newInputs[index]) {
-                              newInputs[index].targetGeneration = value.toString()
+                              newInputs[index].targetGeneration =
+                                value.toString();
                             }
-                          })
-                          setDailyInputs(newInputs)
+                          });
+                          setDailyInputs(newInputs);
                         }}
                         className="w-full justify-start"
                       >
@@ -255,14 +305,17 @@ export default function EnergyPredictionDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const pattern = [1500, 1600, 1700, 1800, 1900, 1200, 1000]
-                          const newInputs = [...dailyInputs]
+                          const pattern = [
+                            1500, 1600, 1700, 1800, 1900, 1200, 1000,
+                          ];
+                          const newInputs = [...dailyInputs];
                           pattern.forEach((value, index) => {
                             if (newInputs[index]) {
-                              newInputs[index].targetGeneration = value.toString()
+                              newInputs[index].targetGeneration =
+                                value.toString();
                             }
-                          })
-                          setDailyInputs(newInputs)
+                          });
+                          setDailyInputs(newInputs);
                         }}
                         className="w-full justify-start"
                       >
@@ -277,7 +330,9 @@ export default function EnergyPredictionDashboard() {
                       {dailyInputs.map((input) => (
                         <div key={input.date} className="flex justify-between">
                           <span>{input.day}</span>
-                          <span className="font-mono">{input.targetGeneration || "0"} kWh</span>
+                          <span className="font-mono">
+                            {input.targetGeneration || "0"} kWh
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -290,7 +345,10 @@ export default function EnergyPredictionDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {dailyInputs.map((input, index) => (
                     <div key={input.date} className="space-y-2">
-                      <Label htmlFor={`day-${index}`} className="text-sm font-medium">
+                      <Label
+                        htmlFor={`day-${index}`}
+                        className="text-sm font-medium"
+                      >
                         {input.day}
                       </Label>
                       <div className="text-xs text-gray-500 mb-1">
@@ -303,7 +361,9 @@ export default function EnergyPredictionDashboard() {
                           type="number"
                           placeholder="1000"
                           value={input.targetGeneration}
-                          onChange={(e) => updateDailyInput(index, e.target.value)}
+                          onChange={(e) =>
+                            updateDailyInput(index, e.target.value)
+                          }
                           className="flex-1"
                         />
                         <div className="flex flex-col gap-1">
@@ -357,7 +417,12 @@ export default function EnergyPredictionDashboard() {
             </Tabs>
 
             <div className="mt-6 flex justify-center">
-              <Button onClick={handlePredict} disabled={!isFormValid || loading} className="px-8 py-2" size="lg">
+              <Button
+                onClick={handlePredict}
+                disabled={!isFormValid || loading}
+                className="px-8 py-2"
+                size="lg"
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -394,7 +459,9 @@ export default function EnergyPredictionDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>생산량 vs 예측 사용량</CardTitle>
-                <CardDescription>7일간 목표 생산량과 예측 사용량 비교</CardDescription>
+                <CardDescription>
+                  7일간 목표 생산량과 예측 사용량 비교
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px]">
@@ -404,7 +471,11 @@ export default function EnergyPredictionDashboard() {
                       <XAxis dataKey="day" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="targetGeneration" fill="var(--color-targetGeneration)" name="목표 생산량" />
+                      <Bar
+                        dataKey="targetGeneration"
+                        fill="var(--color-targetGeneration)"
+                        name="목표 생산량"
+                      />
                       <Line
                         type="monotone"
                         dataKey="predictedConsumption"
@@ -431,7 +502,11 @@ export default function EnergyPredictionDashboard() {
                       <XAxis dataKey="day" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="efficiency" fill="var(--color-efficiency)" name="효율성 %" />
+                      <Bar
+                        dataKey="efficiency"
+                        fill="var(--color-efficiency)"
+                        name="효율성 %"
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
@@ -467,13 +542,16 @@ export default function EnergyPredictionDashboard() {
                     {predictions.map((prediction, index) => (
                       <tr
                         key={prediction.date}
-                        className={`border-b hover:bg-gray-50 ${index === bestIndex ? 'bg-yellow-50' : ''}`}
+                        className={`border-b hover:bg-gray-50 ${
+                          index === bestIndex ? "bg-yellow-50" : ""
+                        }`}
                       >
-                        <td className="p-3 text-sm">{new Date(prediction.date).toLocaleDateString("ko-KR")}</td>
-                        <td className="p-3 font-medium flex items-center gap-1">
-                          {prediction.day}
-                          {index === bestIndex && <Crown className="h-4 w-4 text-orange-500" />}
+                        <td className="p-3 text-sm">
+                          {new Date(prediction.date).toLocaleDateString(
+                            "ko-KR"
+                          )}
                         </td>
+                        <td className="p-3 font-medium">{prediction.day}</td>
                         <td className="p-3 text-blue-600 font-semibold">
                           {prediction.targetGeneration.toLocaleString()} kWh
                         </td>
@@ -482,21 +560,30 @@ export default function EnergyPredictionDashboard() {
                         </td>
                         <td className="p-3">
                           <span
-                            className={`font-bold ${
+                            className={`font-bold flex items-center gap-1 ${
                               prediction.efficiency >= 100
                                 ? "text-green-600"
                                 : prediction.efficiency >= 90
-                                  ? "text-yellow-600"
-                                  : "text-red-600"
+                                ? "text-yellow-600"
+                                : "text-red-600"
                             }`}
                           >
                             {prediction.efficiency}%
+                            {index === bestIndex && (
+                              <Crown className="h-4 w-4 text-orange-500" />
+                            )}
                           </span>
                         </td>
-                        <td className="p-3">{prediction.weather.temperature}°C</td>
+                        <td className="p-3">
+                          {prediction.weather.temperature}°C
+                        </td>
                         <td className="p-3">{prediction.weather.humidity}%</td>
-                        <td className="p-3">{prediction.weather.windSpeed}m/s</td>
-                        <td className="p-3">{prediction.weather.cloudCover}%</td>
+                        <td className="p-3">
+                          {prediction.weather.windSpeed}m/s
+                        </td>
+                        <td className="p-3">
+                          {prediction.weather.cloudCover}%
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -506,38 +593,58 @@ export default function EnergyPredictionDashboard() {
           </Card>
         )}
 
-
         {/* 요약 통계 */}
         {predictions.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <SummaryCard
               title="총 목표 생산량"
-              value={<div className="text-2xl font-bold text-blue-600">{totalTarget.toLocaleString()} kWh</div>}
+              value={
+                <div className="text-2xl font-bold text-blue-600">
+                  {totalTarget.toLocaleString()} kWh
+                </div>
+              }
               subtitle="7일 총합"
             />
             <SummaryCard
               title="총 예상 사용량"
-              value={<div className="text-2xl font-bold text-green-600">{totalPredicted.toLocaleString()} kWh</div>}
+              value={
+                <div className="text-2xl font-bold text-green-600">
+                  {totalPredicted.toLocaleString()} kWh
+                </div>
+              }
               subtitle="7일 총합"
             />
             <SummaryCard
               title="평균 효율성"
-              value={<div className="text-2xl font-bold text-purple-600">{averageEfficiency}%</div>}
+              value={
+                <div className="text-2xl font-bold text-purple-600">
+                  {averageEfficiency}%
+                </div>
+              }
               subtitle="7일 평균"
             />
             <SummaryCard
               title="잉여/부족 전력"
               value={
-                <div className={`text-2xl font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {diff >= 0 ? '+' : ''}{diff.toLocaleString()} kWh
+                <div
+                  className={`text-2xl font-bold ${
+                    diff >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {diff >= 0 ? "+" : ""}
+                  {diff.toLocaleString()} kWh
                 </div>
               }
-              subtitle={diff >= 0 ? '잉여 전력' : '부족 전력'}
+              subtitle={diff >= 0 ? "잉여 전력" : "부족 전력"}
             />
             {bestDay && (
               <SummaryCard
                 title="최고 효율일"
-                value={<div className="text-2xl font-bold text-orange-600">{bestDay.day}</div>}
+                value={
+                  <div className="text-2xl font-bold text-orange-600">
+                    {bestDay.day}
+                  </div>
+                }
                 subtitle={`${bestDay.efficiency}% 효율`}
               />
             )}
@@ -545,5 +652,5 @@ export default function EnergyPredictionDashboard() {
         )}
       </div>
     </div>
-  )
+  );
 }
