@@ -3,15 +3,7 @@
  * 모든 주석은 협업을 위해 한글로 작성되었습니다.
  */
 
-// 날짜별 기상 정보를 표현
-export interface WeatherData {
-  date: string
-  day: string
-  temperature: number
-  humidity: number
-  windSpeed: number
-  cloudCover: number
-}
+import { type WeatherData } from './weather'
 
 // 사용자가 입력한 하루치 목표 생산량 정보
 export interface DailyInput {
