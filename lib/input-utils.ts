@@ -13,7 +13,7 @@ export function createInitialInputs(days: number = 7): DailyInput[] {
     return {
       date: date.toISOString().split('T')[0],
       day: `+${index + 1}일차`,
-      targetGeneration: '',
+      targetProduction: '',
     }
   })
 }
@@ -30,7 +30,7 @@ export function applyInputPattern(
   return inputs.map((input, index) => {
     const date = new Date(input.date)
     const dayOfWeek = date.getDay()
-    let target = input.targetGeneration
+    let target = input.targetProduction
 
     switch (pattern) {
       case 'weekday-weekend':
@@ -44,6 +44,6 @@ export function applyInputPattern(
         break
     }
 
-    return { ...input, targetGeneration: target }
+    return { ...input, targetProduction: target }
   })
 }
