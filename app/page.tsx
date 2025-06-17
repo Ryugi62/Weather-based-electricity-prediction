@@ -619,20 +619,6 @@ export default function EnergyPredictionDashboard() {
               }
               subtitle="7일 평균"
             />
-            <SummaryCard
-              title="잉여/부족 전력"
-              value={
-                <div
-                  className={`text-2xl font-bold ${
-                    diff >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {diff >= 0 ? "+" : ""}
-                  {diff.toLocaleString()} kWh
-                </div>
-              }
-              subtitle={diff >= 0 ? "잉여 전력" : "부족 전력"}
-            />
             {bestDay && (
               <SummaryCard
                 title="최고 효율일"
