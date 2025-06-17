@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Zap, Cloud, Thermometer, Wind, Droplets, Calendar, Copy, Plus, Minus } from "lucide-react"
+import { Loader2, Zap, Cloud, Thermometer, Wind, Droplets, Calendar, Copy, Plus, Minus, Crown } from "lucide-react"
 import {
   Line,
   XAxis,
@@ -23,95 +23,85 @@ import {
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  type WeatherData,
-  type DailyInput,
-  type PredictionResult,
-  generateWeatherData,
-  predictEnergyConsumption,
-} from "@/lib/prediction"
+import { type DailyInput, type PredictionResult } from "@/lib/prediction"
+import { type WeatherData } from "@/lib/weather"
+import { fetchPredictions } from "@/lib/api"
+import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
+import { WeatherCard } from "@/components/WeatherCard"
+import { SummaryCard } from "@/components/SummaryCard"
+const chartConfig = {
+  targetGeneration: { label: "목표 생산량", color: "hsl(var(--chart-1))" },
+  predictedConsumption: { label: "예측 사용량", color: "hsl(var(--chart-2))" },
+  efficiency: { label: "효율성", color: "hsl(var(--chart-3))" },
+}
+
+const REGIONS = {
+  서울: { lat: 37.5665, lon: 126.9780 },
+  경기: { lat: 37.436, lon: 127.55 },
+  인천: { lat: 37.4563, lon: 126.7052 },
+  강원: { lat: 37.8228, lon: 128.1555 },
+  충청: { lat: 36.5184, lon: 127.119 },
+  전라: { lat: 35.7175, lon: 127.153 },
+  경상: { lat: 36.4919, lon: 128.8889 },
+  제주: { lat: 33.489, lon: 126.4983 },
+} as const
+
+type RegionKey = keyof typeof REGIONS
+
 
 export default function EnergyPredictionDashboard() {
-  const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(() => {
-    const inputs = []
-    const today = new Date()
+  const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
 
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
 
-      inputs.push({
-        date: date.toISOString().split("T")[0],
-        day: `+${i}일차`,
-        targetGeneration: "",
-      })
-    }
-    return inputs
-  })
-
-  const [bulkValue, setBulkValue] = useState("")
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
+  const [bulkValue, setBulkValue] = useState("")
+  const [region, setRegion] = useState<RegionKey>('서울')
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
-    const newInputs = [...dailyInputs]
-    newInputs[index].targetGeneration = value
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) =>
+        idx === index ? { ...item, targetGeneration: value } : item,
+      ),
+    )
   }
 
   // 일괄 적용
   const applyBulkValue = () => {
     if (!bulkValue) return
-    const newInputs = dailyInputs.map((input) => ({
-      ...input,
-      targetGeneration: bulkValue,
-    }))
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((input) => ({ ...input, targetGeneration: bulkValue })),
+    )
   }
 
   // 패턴 적용
   const applyPattern = (pattern: "weekday-weekend" | "increasing" | "decreasing") => {
-    const newInputs = [...dailyInputs]
-    const baseValue = 1000
-
-    newInputs.forEach((input, index) => {
-      const date = new Date(input.date)
-      const dayOfWeek = date.getDay()
-
-      switch (pattern) {
-        case "weekday-weekend":
-          // 평일 1200, 주말 800
-          input.targetGeneration = dayOfWeek === 0 || dayOfWeek === 6 ? "800" : "1200"
-          break
-        case "increasing":
-          // 점진적 증가
-          input.targetGeneration = (baseValue + index * 100).toString()
-          break
-        case "decreasing":
-          // 점진적 감소
-          input.targetGeneration = (baseValue + 600 - index * 100).toString()
-          break
-      }
-    })
-    setDailyInputs(newInputs)
+    setDailyInputs(applyInputPattern(dailyInputs, pattern))
   }
 
   // 값 복사
   const copyValue = (fromIndex: number, toIndex: number) => {
-    const newInputs = [...dailyInputs]
-    newInputs[toIndex].targetGeneration = newInputs[fromIndex].targetGeneration
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) =>
+        idx === toIndex
+          ? { ...item, targetGeneration: inputs[fromIndex].targetGeneration }
+          : item,
+      ),
+    )
   }
 
   // 값 조정 (+ / -)
   const adjustValue = (index: number, delta: number) => {
-    const newInputs = [...dailyInputs]
-    const currentValue = Number(newInputs[index].targetGeneration) || 0
-    const newValue = Math.max(0, currentValue + delta)
-    newInputs[index].targetGeneration = newValue.toString()
-    setDailyInputs(newInputs)
+    setDailyInputs((inputs) =>
+      inputs.map((item, idx) => {
+        if (idx !== index) return item
+        const currentValue = Number(item.targetGeneration) || 0
+        const newValue = Math.max(0, currentValue + delta)
+        return { ...item, targetGeneration: newValue.toString() }
+      }),
+    )
   }
 
   const handlePredict = async () => {
@@ -120,33 +110,30 @@ export default function EnergyPredictionDashboard() {
 
     setLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    const weather = generateWeatherData()
-    setWeatherData(weather)
-
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const results = predictEnergyConsumption(dailyInputs, weather)
-    setPredictions(results)
-
-    setLoading(false)
+    try {
+      const { lat, lon } = REGIONS[region]
+      const results = await fetchPredictions(dailyInputs, lat, lon)
+      setPredictions(results)
+      setWeatherData(results.map((r) => r.weather))
+    } catch (error) {
+      console.error('Failed to fetch predictions', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const isFormValid = dailyInputs.every((input) => input.targetGeneration.trim() !== "")
+  const totalTarget = predictions.reduce((sum, p) => sum + p.targetGeneration, 0)
+  const totalPredicted = predictions.reduce((sum, p) => sum + p.predictedConsumption, 0)
+  const averageEfficiency = predictions.length ? Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / predictions.length) : 0
+  const diff = predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
+  const bestDay = predictions.reduce<PredictionResult | null>((best, p) => {
+    if (!best) return p
+    return p.efficiency > best.efficiency ? p : best
+  }, null)
+  const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1
 
-  const chartConfig = {
-    targetGeneration: {
-      label: "목표 생산량",
-      color: "hsl(var(--chart-1))",
-    },
-    predictedConsumption: {
-      label: "예측 사용량",
-      color: "hsl(var(--chart-2))",
-    },
-    efficiency: {
-      label: "효율성",
-      color: "hsl(var(--chart-3))",
-    },
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -172,6 +159,21 @@ export default function EnergyPredictionDashboard() {
             <CardDescription>빠르고 쉬운 입력을 위한 다양한 방법을 제공합니다</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <Label htmlFor="region">지역 선택</Label>
+              <select
+                id="region"
+                value={region}
+                onChange={(e) => setRegion(e.target.value as RegionKey)}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              >
+                {Object.keys(REGIONS).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Tabs defaultValue="quick" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="quick">빠른 입력</TabsTrigger>
@@ -380,30 +382,7 @@ export default function EnergyPredictionDashboard() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                 {weatherData.map((weather, index) => (
-                  <div key={index} className="bg-white p-3 rounded-lg border">
-                    <div className="text-sm font-medium mb-2">{weather.day}</div>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {new Date(weather.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Thermometer className="h-3 w-3 text-red-500" />
-                        <span className="text-xs">{weather.temperature}°C</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Droplets className="h-3 w-3 text-blue-500" />
-                        <span className="text-xs">{weather.humidity}%</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Wind className="h-3 w-3 text-gray-500" />
-                        <span className="text-xs">{weather.windSpeed}m/s</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Cloud className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs">{weather.cloudCover}%</span>
-                      </div>
-                    </div>
-                  </div>
+                  <WeatherCard key={index} weather={weather} />
                 ))}
               </div>
             </CardContent>
@@ -487,9 +466,15 @@ export default function EnergyPredictionDashboard() {
                   </thead>
                   <tbody>
                     {predictions.map((prediction, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50">
+                      <tr
+                        key={index}
+                        className={`border-b hover:bg-gray-50 ${index === bestIndex ? 'bg-yellow-50' : ''}`}
+                      >
                         <td className="p-3 text-sm">{new Date(prediction.date).toLocaleDateString("ko-KR")}</td>
-                        <td className="p-3 font-medium">{prediction.day}</td>
+                        <td className="p-3 font-medium flex items-center gap-1">
+                          {prediction.day}
+                          {index === bestIndex && <Crown className="h-4 w-4 text-orange-500" />}
+                        </td>
                         <td className="p-3 text-blue-600 font-semibold">
                           {prediction.targetGeneration.toLocaleString()} kWh
                         </td>
@@ -522,72 +507,41 @@ export default function EnergyPredictionDashboard() {
           </Card>
         )}
 
+
         {/* 요약 통계 */}
         {predictions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">총 목표 생산량</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {predictions.reduce((sum, p) => sum + p.targetGeneration, 0).toLocaleString()} kWh
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <SummaryCard
+              title="총 목표 생산량"
+              value={<div className="text-2xl font-bold text-blue-600">{totalTarget.toLocaleString()} kWh</div>}
+              subtitle="7일 총합"
+            />
+            <SummaryCard
+              title="총 예상 사용량"
+              value={<div className="text-2xl font-bold text-green-600">{totalPredicted.toLocaleString()} kWh</div>}
+              subtitle="7일 총합"
+            />
+            <SummaryCard
+              title="평균 효율성"
+              value={<div className="text-2xl font-bold text-purple-600">{averageEfficiency}%</div>}
+              subtitle="7일 평균"
+            />
+            <SummaryCard
+              title="잉여/부족 전력"
+              value={
+                <div className={`text-2xl font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {diff >= 0 ? '+' : ''}{diff.toLocaleString()} kWh
                 </div>
-                <p className="text-xs text-gray-500 mt-1">7일 총합</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">총 예상 사용량</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {predictions.reduce((sum, p) => sum + p.predictedConsumption, 0).toLocaleString()} kWh
-                </div>
-                <p className="text-xs text-gray-500 mt-1">7일 총합</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">평균 효율성</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
-                  {Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / 7)}%
-                </div>
-                <p className="text-xs text-gray-500 mt-1">7일 평균</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">잉여/부족 전력</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-2xl font-bold ${
-                    predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                    ? "+"
-                    : ""}
-                  {predictions
-                    .reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
-                    .toLocaleString()}{" "}
-                  kWh
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                    ? "잉여 전력"
-                    : "부족 전력"}
-                </p>
-              </CardContent>
-            </Card>
+              }
+              subtitle={diff >= 0 ? '잉여 전력' : '부족 전력'}
+            />
+            {bestDay && (
+              <SummaryCard
+                title="최고 효율일"
+                value={<div className="text-2xl font-bold text-orange-600">{bestDay.day}</div>}
+                subtitle={`${bestDay.efficiency}% 효율`}
+              />
+            )}
           </div>
         )}
       </div>
