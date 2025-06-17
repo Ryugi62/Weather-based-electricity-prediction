@@ -41,8 +41,6 @@ const chartConfig = {
 
 export default function EnergyPredictionDashboard() {
   const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
-
-
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
