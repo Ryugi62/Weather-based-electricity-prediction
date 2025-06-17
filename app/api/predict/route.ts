@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       w.windSpeed,
       w.humidity,
       w.cloudCover,
-      Number(input.targetGeneration),
+      Number(input.targetProduction),
     ];
   });
 
@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
   const results: PredictionResult[] = inputs.map((input, idx) => {
     const w = weather[idx];
     const predicted = Math.round(predictions[idx]);
-    const target = Number(input.targetGeneration);
+    const target = Number(input.targetProduction);
     const efficiency = Math.round((predicted / target) * 100);
 
     return {
       date: input.date,
       day: input.day,
-      targetGeneration: target,
+      targetProduction: target,
       predictedConsumption: predicted,
       weather: w,
       efficiency,
