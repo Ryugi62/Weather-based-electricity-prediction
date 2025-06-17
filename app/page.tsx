@@ -27,9 +27,8 @@ import {
   type WeatherData,
   type DailyInput,
   type PredictionResult,
-  generateWeatherData,
-  predictEnergyConsumption,
 } from "@/lib/prediction"
+import { fetchPredictions } from "@/lib/api"
 import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
 
 export default function EnergyPredictionDashboard() {
@@ -91,15 +90,15 @@ export default function EnergyPredictionDashboard() {
 
     setLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    const weather = generateWeatherData()
-    setWeatherData(weather)
-
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const results = predictEnergyConsumption(dailyInputs, weather)
-    setPredictions(results)
-
-    setLoading(false)
+    try {
+      const results = await fetchPredictions(dailyInputs)
+      setPredictions(results)
+      setWeatherData(results.map((r) => r.weather))
+    } catch (error) {
+      console.error('Failed to fetch predictions', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const isFormValid = dailyInputs.every((input) => input.targetGeneration.trim() !== "")
