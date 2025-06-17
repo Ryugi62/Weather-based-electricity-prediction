@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { predictEnergyConsumption, type DailyInput } from "@/lib/prediction";
+import { type DailyInput, type PredictionResult } from "@/lib/prediction";
 import { fetchWeatherForecast } from "@/lib/weather";
+import { spawn } from "child_process";
+import path from "path";
 
 const DEFAULT_LAT = Number(process.env.WEATHER_LATITUDE ?? "37.5665");
 const DEFAULT_LON = Number(process.env.WEATHER_LONGITUDE ?? "126.9780");
@@ -18,6 +20,58 @@ export async function POST(request: NextRequest) {
   const end = inputs[inputs.length - 1].date;
 
   const weather = await fetchWeatherForecast(start, end, lat, lon);
-  const results = predictEnergyConsumption(inputs, weather);
+
+  const rows = inputs.map((input, idx) => {
+    const w = weather[idx];
+    return [
+      w.temperature,
+      w.windSpeed,
+      w.humidity,
+      w.cloudCover,
+      Number(input.targetGeneration),
+    ];
+  });
+
+  const scriptPath = path.join(process.cwd(), "scripts", "predict.py");
+  const py = spawn("python3", [scriptPath], { cwd: process.cwd() });
+
+  const payload = JSON.stringify({ inputs: rows });
+  py.stdin.write(payload);
+  py.stdin.end();
+
+  const stdout: Buffer[] = [];
+  const stderr: Buffer[] = [];
+  await new Promise<void>((resolve, reject) => {
+    py.stdout.on("data", (data) => stdout.push(data));
+    py.stderr.on("data", (data) => stderr.push(data));
+    py.on("error", reject);
+    py.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(Buffer.concat(stderr).toString() || `exit code ${code}`));
+      } else {
+        resolve();
+      }
+    });
+  });
+
+  const { predictions } = JSON.parse(Buffer.concat(stdout).toString()) as {
+    predictions: number[];
+  };
+
+  const results: PredictionResult[] = inputs.map((input, idx) => {
+    const w = weather[idx];
+    const predicted = Math.round(predictions[idx]);
+    const target = Number(input.targetGeneration);
+    const efficiency = Math.round((predicted / target) * 100);
+    return {
+      date: input.date,
+      day: input.day,
+      targetGeneration: target,
+      predictedConsumption: predicted,
+      weather: w,
+      efficiency,
+    };
+  });
+
   return NextResponse.json(results);
 }
