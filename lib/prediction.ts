@@ -9,14 +9,14 @@ import { type WeatherData } from "./weather";
 export interface DailyInput {
   date: string;
   day: string;
-  targetGeneration: string;
+  targetProduction: string;
 }
 
 // 예측 결과 구조
 export interface PredictionResult {
   date: string;
   day: string;
-  targetGeneration: number;
+  targetProduction: number;
   predictedConsumption: number;
   weather: WeatherData;
   efficiency: number;
@@ -85,7 +85,7 @@ export function predictEnergyConsumption(
 ): PredictionResult[] {
   return inputs.map((input, index) => {
     const w = weather[index];
-    const generation = Number(input.targetGeneration);
+    const generation = Number(input.targetProduction);
     let consumption = generation * 0.85;
     consumption = applyTemperatureFactor(consumption, w.temperature);
     consumption = applyHumidityFactor(consumption, w.humidity);
@@ -102,7 +102,7 @@ export function predictEnergyConsumption(
     return {
       date: input.date,
       day: input.day,
-      targetGeneration: generation,
+      targetProduction: generation,
       predictedConsumption,
       weather: w,
       efficiency,
