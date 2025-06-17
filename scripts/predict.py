@@ -2,7 +2,8 @@ import sys
 import json
 import joblib
 
-MODEL = joblib.load("models/linear_model.pkl")
+# The trained linear regression model
+MODEL = joblib.load("modles/linear_model.pkl")
 
 
 def main():
