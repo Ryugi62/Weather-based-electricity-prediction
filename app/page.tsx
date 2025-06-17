@@ -274,8 +274,8 @@ export default function EnergyPredictionDashboard() {
                   <Card className="p-4">
                     <h4 className="font-medium mb-2">현재 입력값 미리보기</h4>
                     <div className="space-y-1 text-sm">
-                      {dailyInputs.map((input, index) => (
-                        <div key={index} className="flex justify-between">
+                      {dailyInputs.map((input) => (
+                        <div key={input.date} className="flex justify-between">
                           <span>{input.day}</span>
                           <span className="font-mono">{input.targetGeneration || "0"} kWh</span>
                         </div>
@@ -289,7 +289,7 @@ export default function EnergyPredictionDashboard() {
               <TabsContent value="manual" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {dailyInputs.map((input, index) => (
-                    <div key={index} className="space-y-2">
+                    <div key={input.date} className="space-y-2">
                       <Label htmlFor={`day-${index}`} className="text-sm font-medium">
                         {input.day}
                       </Label>
@@ -380,8 +380,8 @@ export default function EnergyPredictionDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-                {weatherData.map((weather, index) => (
-                  <WeatherCard key={index} weather={weather} />
+                {weatherData.map((weather) => (
+                  <WeatherCard key={weather.date} weather={weather} />
                 ))}
               </div>
             </CardContent>
@@ -466,7 +466,7 @@ export default function EnergyPredictionDashboard() {
                   <tbody>
                     {predictions.map((prediction, index) => (
                       <tr
-                        key={index}
+                        key={prediction.date}
                         className={`border-b hover:bg-gray-50 ${index === bestIndex ? 'bg-yellow-50' : ''}`}
                       >
                         <td className="p-3 text-sm">{new Date(prediction.date).toLocaleDateString("ko-KR")}</td>
