@@ -23,11 +23,8 @@ import {
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  type WeatherData,
-  type DailyInput,
-  type PredictionResult,
-} from "@/lib/prediction"
+import { type DailyInput, type PredictionResult } from "@/lib/prediction"
+import { type WeatherData } from "@/lib/weather"
 import { fetchPredictions } from "@/lib/api"
 import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
 import { WeatherCard } from "@/components/WeatherCard"
@@ -41,10 +38,14 @@ const chartConfig = {
 
 export default function EnergyPredictionDashboard() {
   const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
+
+
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
   const [bulkValue, setBulkValue] = useState("")
+  const [latitude, setLatitude] = useState(37.5665)
+  const [longitude, setLongitude] = useState(126.9780)
 
   // 입력값 업데이트
   const updateDailyInput = (index: number, value: string) => {
@@ -98,7 +99,7 @@ export default function EnergyPredictionDashboard() {
     setLoading(true)
 
     try {
-      const results = await fetchPredictions(dailyInputs)
+      const results = await fetchPredictions(dailyInputs, latitude, longitude)
       setPredictions(results)
       setWeatherData(results.map((r) => r.weather))
     } catch (error) {
@@ -140,6 +141,26 @@ export default function EnergyPredictionDashboard() {
             <CardDescription>빠르고 쉬운 입력을 위한 다양한 방법을 제공합니다</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="lat">위도</Label>
+                <Input
+                  id="lat"
+                  type="number"
+                  value={latitude}
+                  onChange={(e) => setLatitude(parseFloat(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="lon">경도</Label>
+                <Input
+                  id="lon"
+                  type="number"
+                  value={longitude}
+                  onChange={(e) => setLongitude(parseFloat(e.target.value))}
+                />
+              </div>
+            </div>
             <Tabs defaultValue="quick" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="quick">빠른 입력</TabsTrigger>
