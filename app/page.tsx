@@ -170,9 +170,15 @@ export default function EnergyPredictionDashboard() {
     (sum, p) => sum + (p.targetProduction - p.predictedConsumption),
     0
   );
+  // 최저 효율(제품당 전력 사용량)이 동일한 경우
+  // 예측 전력 소비량이 더 낮은 날을 우선 선택한다
   const bestDay = predictions.reduce<PredictionResult | null>((best, p) => {
     if (!best) return p;
-    return p.efficiency < best.efficiency ? p : best;
+    if (p.efficiency < best.efficiency) return p;
+    if (p.efficiency === best.efficiency) {
+      return p.predictedConsumption < best.predictedConsumption ? p : best;
+    }
+    return best;
   }, null);
   const bestIndex = bestDay ? predictions.indexOf(bestDay) : -1;
 
