@@ -2,7 +2,7 @@ import sys
 import json
 import joblib
 
-MODEL = joblib.load("models/energy_model.pkl")
+MODEL = joblib.load("models/linear_model.pkl")
 
 
 def main():
