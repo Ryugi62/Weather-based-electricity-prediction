@@ -30,11 +30,17 @@ import {
 } from "@/lib/prediction"
 import { fetchPredictions } from "@/lib/api"
 import { createInitialInputs, applyInputPattern } from "@/lib/input-utils"
+import { WeatherCard } from "@/components/WeatherCard"
+import { SummaryCard } from "@/components/SummaryCard"
+const chartConfig = {
+  targetGeneration: { label: "목표 생산량", color: "hsl(var(--chart-1))" },
+  predictedConsumption: { label: "예측 사용량", color: "hsl(var(--chart-2))" },
+  efficiency: { label: "효율성", color: "hsl(var(--chart-3))" },
+}
+
 
 export default function EnergyPredictionDashboard() {
   const [dailyInputs, setDailyInputs] = useState<DailyInput[]>(createInitialInputs)
-
-  const [bulkValue, setBulkValue] = useState("")
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [weatherData, setWeatherData] = useState<WeatherData[]>([])
@@ -102,21 +108,12 @@ export default function EnergyPredictionDashboard() {
   }
 
   const isFormValid = dailyInputs.every((input) => input.targetGeneration.trim() !== "")
+  const totalTarget = predictions.reduce((sum, p) => sum + p.targetGeneration, 0)
+  const totalPredicted = predictions.reduce((sum, p) => sum + p.predictedConsumption, 0)
+  const averageEfficiency = predictions.length ? Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / predictions.length) : 0
+  const diff = predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
 
-  const chartConfig = {
-    targetGeneration: {
-      label: "목표 생산량",
-      color: "hsl(var(--chart-1))",
-    },
-    predictedConsumption: {
-      label: "예측 사용량",
-      color: "hsl(var(--chart-2))",
-    },
-    efficiency: {
-      label: "효율성",
-      color: "hsl(var(--chart-3))",
-    },
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -350,30 +347,7 @@ export default function EnergyPredictionDashboard() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                 {weatherData.map((weather, index) => (
-                  <div key={index} className="bg-white p-3 rounded-lg border">
-                    <div className="text-sm font-medium mb-2">{weather.day}</div>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {new Date(weather.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Thermometer className="h-3 w-3 text-red-500" />
-                        <span className="text-xs">{weather.temperature}°C</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Droplets className="h-3 w-3 text-blue-500" />
-                        <span className="text-xs">{weather.humidity}%</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Wind className="h-3 w-3 text-gray-500" />
-                        <span className="text-xs">{weather.windSpeed}m/s</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Cloud className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs">{weather.cloudCover}%</span>
-                      </div>
-                    </div>
-                  </div>
+                  <WeatherCard key={index} weather={weather} />
                 ))}
               </div>
             </CardContent>
@@ -492,72 +466,34 @@ export default function EnergyPredictionDashboard() {
           </Card>
         )}
 
+
         {/* 요약 통계 */}
         {predictions.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">총 목표 생산량</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {predictions.reduce((sum, p) => sum + p.targetGeneration, 0).toLocaleString()} kWh
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="총 목표 생산량"
+              value={<div className="text-2xl font-bold text-blue-600">{totalTarget.toLocaleString()} kWh</div>}
+              subtitle="7일 총합"
+            />
+            <SummaryCard
+              title="총 예상 사용량"
+              value={<div className="text-2xl font-bold text-green-600">{totalPredicted.toLocaleString()} kWh</div>}
+              subtitle="7일 총합"
+            />
+            <SummaryCard
+              title="평균 효율성"
+              value={<div className="text-2xl font-bold text-purple-600">{averageEfficiency}%</div>}
+              subtitle="7일 평균"
+            />
+            <SummaryCard
+              title="잉여/부족 전력"
+              value={
+                <div className={`text-2xl font-bold ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {diff >= 0 ? '+' : ''}{diff.toLocaleString()} kWh
                 </div>
-                <p className="text-xs text-gray-500 mt-1">7일 총합</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">총 예상 사용량</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {predictions.reduce((sum, p) => sum + p.predictedConsumption, 0).toLocaleString()} kWh
-                </div>
-                <p className="text-xs text-gray-500 mt-1">7일 총합</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">평균 효율성</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
-                  {Math.round(predictions.reduce((sum, p) => sum + p.efficiency, 0) / 7)}%
-                </div>
-                <p className="text-xs text-gray-500 mt-1">7일 평균</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">잉여/부족 전력</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-2xl font-bold ${
-                    predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                    ? "+"
-                    : ""}
-                  {predictions
-                    .reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0)
-                    .toLocaleString()}{" "}
-                  kWh
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {predictions.reduce((sum, p) => sum + (p.targetGeneration - p.predictedConsumption), 0) >= 0
-                    ? "잉여 전력"
-                    : "부족 전력"}
-                </p>
-              </CardContent>
-            </Card>
+              }
+              subtitle={diff >= 0 ? '잉여 전력' : '부족 전력'}
+            />
           </div>
         )}
       </div>
