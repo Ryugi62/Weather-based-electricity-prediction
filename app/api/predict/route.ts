@@ -24,9 +24,12 @@ export async function POST(request: NextRequest) {
   const rows = inputs.map((input, idx) => {
     const w = weather[idx];
     return [
-
+      input.date,
+      Number(input.targetProduction),
+      w.temperature,
       w.temperature,
       w.windSpeed,
+      w.humidity,
       w.humidity,
       w.cloudCover,
       Number(input.targetProduction),
@@ -48,7 +51,9 @@ export async function POST(request: NextRequest) {
     py.on("error", reject);
     py.on("close", (code) => {
       if (code !== 0) {
-        reject(new Error(Buffer.concat(stderr).toString() || `exit code ${code}`));
+        reject(
+          new Error(Buffer.concat(stderr).toString() || `exit code ${code}`)
+        );
       } else {
         resolve();
       }

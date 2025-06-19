@@ -4,7 +4,7 @@ import joblib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MODEL = joblib.load(ROOT / "models" / "linear_model.pkl")
+MODEL = joblib.load(ROOT / "models" / "best_model.joblib")
 
 
 def main():
