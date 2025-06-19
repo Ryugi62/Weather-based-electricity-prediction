@@ -21,18 +21,13 @@ export async function POST(request: NextRequest) {
 
   const weather = await fetchWeatherForecast(start, end, lat, lon);
 
+  // 모델은 생산량, 기온, 습도 세 개의 입력만을 사용한다
   const rows = inputs.map((input, idx) => {
     const w = weather[idx];
     return [
-      input.date,
       Number(input.targetProduction),
       w.temperature,
-      w.temperature,
-      w.windSpeed,
       w.humidity,
-      w.humidity,
-      w.cloudCover,
-      Number(input.targetProduction),
     ];
   });
 
